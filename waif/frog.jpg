@@ -1,0 +1,1782 @@
+é***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/
+ /***********************************************************************************
+ *                   IEEE 754-1985 64-BIT FLOATING POINT NUMBER                    *
+ *                                                                                 *
+ *             63          52                                                    0 *
+ * SIGN (1) ->|.|...........|....................................................| *
+ *              EXPONENT (11)                 MANTISSA (52)                        *
+ *                                                                                 *
+ *  TOP NUMBERS ARE LOWER BOUNDS FOR EACH SEGMENT, LABELS ON BOTTOM AND LEFT SIDE  *
+ *    ARE DESCRIPTORS OF EACH SEGMENT FOLLOWED BY THE BIT COUNT IN EACH SEGMENT.   *
+ ***********************************************************************************
+ *                               # SIGN SEGMENT #                                  *
+ *                                                                                 *
+ *                         0 IF POSITIVE, 1 IF NEGATIVE.                           *
+ ***********************************************************************************
+ *                             # EXPONENT SEGMENT #                                *
+ *                                                                                 *
+ *    BINARY DECIMAL IS SHIFTED SUCH THAT THE NUMBER CAN BE WRITTEN USING PROPER   *
+ *      SCIENTIFIC NOTATION, EG. 1.1011 x 2^n WHERE n IS THE EXPONENTIAL SHIFT     *
+ *     NEEDED TO EXPRESS THE ORIGINAL BINARY DECIMAL. THE EXPONENT IS 'BIASED'     *
+ *   WITH A BASE VALUE, MEANING THAT THE BIAS IS THE EQUIVALENT OF 2^0. THE BIAS   *
+ *  FOR 64-BIT FLOATS IN THIS STANDARD IS 1023, WHICH MEANS THAT THE ACTUAL VALUE  *
+ *  OF n IN THE EXAMPLE ABOVE WOULD BE 1023 SUBTRACTED FROM THIS SEGMENT'S VALUE.  *
+ ***********************************************************************************
+ *                             # MANTISSA SEGMENT #                                *
+ *                                                                                 *
+ *    THE FRACTIONAL PORTION OF THE NUMBER. EACH BIT REPRESENTS AN INVERSE POWER   *
+ * OF TWO, WHICH WILL PRODUCE THE FULL FRACTION OF THE NUMBER WHEN ADDED TOGETHER. *
+ *  THE MSB IS 2^-1, WHILE THE LSB IS 2^-52. THE EXPONENT STEPS DOWN ONE FOR EACH  *
+ *                 BIT TRAVERSED BEYOND THE MSB IN THE SEGMENT.                    *
+ *                                                                                 *
+ *      !! NOTE THAT THIS IS _ONLY_ THE FRACTIONAL PORTION OF THE NUMBER !!        *
+ *  IF THE NUMBER BEING PARSED IS 1.1011 x 2^n, THIS WILL ONLY BE 0.1011. THE ONE  *
+ *  TO THE LEFT OF THE DECIMAL POINT IS ALWAYS IMPLIED, AND IS NOT STORED IN THIS  *
+ *   SEGMENT SO AS TO GIVE AN EXTRA BIT OF PRECISION WHILE CUTTING A REDUNDANCY.   *
+ *          !! DO __NOT__ FORGET TO ADD ONE TO THIS VALUE WHEN SUMMED !!           *
+ ***********************************************************************************
+ *                            # SPECIAL CONDITIONS #                               *
+ *                                                                                 *
+ *  THE IEEE 754-1985 STANDARD SPECIFIES A FEW SPECIAL CONDITIONS THAT MAY OCCUR   *
+ *      WHEN PARSING A 64-BIT FLOATING POINT NUMBER. THEY ARE LISTED BELOW.        *
+ *                                                                                 *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ ZERO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE ZERO, 1 FOR NEGATIVE ZERO                  *
+ *    unbiased exponent: ALL 0 BITS                                                *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ INFINITY \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: 0 FOR POSITIVE INFINITY, 1 FOR NEGATIVE INFINITY          *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ALL 0 BITS                                                *
+ *\\\\\\\\\\\\\\\\\\\\\\\\\\\\ NOT A NUMBER (NaN) \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\*
+ *                 sign: EITHER 0 OR 1                                             *
+ *    unbiased exponent: ALL 1 BITS (0x7FF)                                        *
+ *             mantissa: ANYTHING EXCEPT ALL 0 BITS                                *
+ ***********************************************************************************/ 
